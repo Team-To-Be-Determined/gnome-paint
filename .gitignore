@@ -1,0 +1,12 @@
+Makefile
+libtool
+stamp-h1
+*.gmo
+*.in
+*.o
+config.*
+data/
+po/
+src/gnome-paint
+src/.*
+
