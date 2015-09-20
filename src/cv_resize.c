@@ -58,6 +58,7 @@ static gint			y_res			=	0;
  *   CODE
  */
 
+
 void
 cv_resize_set_canvas ( gp_canvas * canvas )
 {
@@ -107,8 +108,8 @@ void
 on_cv_ev_box_realize (GtkWidget *widget, gpointer user_data)
 {
 	gint8 dash_list[]	=	{ 1, 1 };
-	cv_ev_box	=	widget;	
-	gc_resize	=	gdk_gc_new ( widget->window );
+	cv_ev_box	        =	widget;	
+	gc_resize	        =	gdk_gc_new ( widget->window );
 	g_assert( gc_resize );
 	/*set data to be destroyed*/
 	g_object_set_data_full (	G_OBJECT(widget), "gc_resize", 
@@ -194,12 +195,21 @@ on_cv_other_edge_expose_event	(   GtkWidget	   *widget,
 									GdkEventExpose *event,
                                     gpointer       user_data )
 {
+#if GTK_MAJOR_VERSION >= 2 && GTK_MINOR_VERSION >= 18
 	gdk_draw_line ( widget->window,
                     widget->style->fg_gc[gtk_widget_get_state(widget)],
                     0,0,0,widget->allocation.height);
 	gdk_draw_line ( widget->window,
                     widget->style->fg_gc[gtk_widget_get_state(widget)],
                     0,0,widget->allocation.width,0);
+#else
+	gdk_draw_line ( widget->window,
+                    widget->style->fg_gc[GTK_WIDGET_STATE(widget)],
+                    0,0,0,widget->allocation.height);
+	gdk_draw_line ( widget->window,
+                    widget->style->fg_gc[GTK_WIDGET_STATE(widget)],
+                    0,0,widget->allocation.width,0);
+#endif
 	return TRUE;
 }
 

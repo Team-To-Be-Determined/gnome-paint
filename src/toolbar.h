@@ -46,7 +46,11 @@ typedef enum {
     TOOL_ELLIPSE,
     TOOL_CURVE,
     TOOL_POLYGON,
-    TOOL_ROUNDED_RECTANGLE
+    TOOL_ROUNDED_RECTANGLE,
+    TOOL_CLEAR_CANVAS,
+    TOOL_INVERT_CANVAS,
+    TOOL_FLIP_CANVAS,
+    TOOL_ROTATE_CANVAS
 } gp_tool_enum;
 
 
@@ -125,5 +129,8 @@ void on_rect0_toggled					(GtkToggleToolButton *button, gpointer user_data);
 void on_rect1_toggled					(GtkToggleToolButton *button, gpointer user_data);
 void on_rect2_toggled					(GtkToggleToolButton *button, gpointer user_data);
 
+/* Toggle opaque and transparent buttons */
+void on_sel1_toggled					(GtkToggleToolButton *button, gpointer user_data);
+void on_sel2_toggled					(GtkToggleToolButton *button, gpointer user_data);
 
 #endif /*__TOOLBAR_H__*/

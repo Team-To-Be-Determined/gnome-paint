@@ -64,7 +64,8 @@ void			gp_image_data_free			( GpImageData *data );
 void			gp_image_draw				( GpImage *image, 
 							                  GdkDrawable *drawable,
 							                  GdkGC *gc,
-							                  gint x, gint y );
+							                  gint x, gint y,
+							                  gint width, gint height );
 gint			gp_image_get_width			( GpImage *image );
 gint			gp_image_get_height			( GpImage *image );
 gboolean		gp_image_get_has_alpha		( GpImage *image );
@@ -75,6 +76,20 @@ void			gp_image_set_diff_pixmap	( GpImage *image,
 				                              guint x_offset, 
 				                              guint y_offset );
 
+void			gp_image_make_color_transparent		( GpImage *image,
+													  guchar r,
+													  guchar g,
+                                		      		  guchar b,
+                                		      		  guchar a );
+
+void            gp_image_invert_colors       ( GpImage *image);
+void            gp_image_rotate              ( GpImage *image, gint angle );
+void            gp_image_flip                ( GpImage *image,
+                                               gboolean horizontal );
+
+GpImage *		gp_image_new_from_pixbuf	 ( GdkPixbuf *pixbuf,
+											   gboolean has_alpha  );
+GpImage * 		gp_image_copy				 ( GpImage *image );
 
 G_END_DECLS
 

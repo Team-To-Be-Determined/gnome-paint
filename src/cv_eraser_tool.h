@@ -18,30 +18,23 @@
     along with gnome-paint.  If not, see <http://www.gnu.org/licenses/>.
 ****************************************************************************/
 
-#ifndef _PAINTBRUSH_TOOL_H_
-#define _PAINTBRUSH_TOOL_H_
+#ifndef _ERASER_TOOL_H_
+#define _ERASER_TOOL_H_
 
 #include "common.h"
 
 typedef enum{
-	GP_BRUSH_RECT_LARGE,
-	GP_BRUSH_RECT_MEDIUM,
-	GP_BRUSH_RECT_SMALL,
-	GP_BRUSH_ROUND_LARGE,
-	GP_BRUSH_ROUND_MEDIUM,
-	GP_BRUSH_ROUND_SMALL,
-	GP_BRUSH_FWRD_LARGE,
-	GP_BRUSH_FWRD_MEDIUM,
-	GP_BRUSH_FWRD_SMALL,
-	GP_BRUSH_BACK_LARGE,
-	GP_BRUSH_BACK_MEDIUM,
-	GP_BRUSH_BACK_SMALL,
-	GP_BRUSH_MAX
-}GPBrushSize;
+	GP_ERASER_RECT_LARGE,
+	GP_ERASER_RECT_MEDIUM,
+	GP_ERASER_RECT_SMALL,
+	GP_ERASER_RECT_TINY,
+	GP_ERASER_ROUND_LARGE,
+	GP_ERASER_ROUND_MEDIUM,
+	GP_ERASER_ROUND_SMALL,
+	GP_ERASER_ROUND_TINY
+}GPEraserSize;
 
-gp_tool * tool_paintbrush_init ( gp_canvas * canvas );
-void notify_brush_of_fg_color_change(void);
-
-void on_brush_size_toggled(GtkWidget *widget, gpointer data);
-
+gp_tool * tool_eraser_init ( gp_canvas * canvas );
+void notify_eraser_of_bg_color_change(void);
+void on_eraser_size_toggled(GtkWidget *widget, gpointer data);
 #endif

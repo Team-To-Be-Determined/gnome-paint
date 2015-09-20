@@ -326,7 +326,7 @@ gp_image_set_mask ( GpImage *image, GdkBitmap *mask )
 		GdkPixbuf *tmp ;
 		tmp = gdk_pixbuf_add_alpha(pixbuf, FALSE, 0, 0, 0);
 		g_object_unref(pixbuf);
-		pixbuf = tmp;
+		image->priv->pixbuf = tmp;
 	}
 	m_pixbuf	=   gdk_pixbuf_copy ( pixbuf );
 	
@@ -369,16 +369,205 @@ void
 gp_image_draw ( GpImage *image, 
                 GdkDrawable *drawable,
                 GdkGC *gc,
-				gint x, gint y )
+				gint x, gint y,
+                gint width, gint height )
 {
+	gboolean	resized;
+	GdkPixbuf   *pixbuf;
+	gint		wo,ho,w,h;
+
+	g_return_if_fail ( GP_IS_IMAGE (image) );
+
+	wo = gp_image_get_width  (image);
+	ho = gp_image_get_height (image);
+	w = (width  == -1)?wo:width;
+	h = (height == -1)?ho:height;
+
+	if ( w == wo && h == ho )
+	{
+		pixbuf  = image->priv->pixbuf;
+		resized = FALSE;
+	}
+	else
+	{
+		pixbuf = gdk_pixbuf_scale_simple ( image->priv->pixbuf, w, h, GDK_INTERP_HYPER );
+		resized = TRUE;
+	}
+	
 	gdk_draw_pixbuf	( drawable,
 			          gc,
-			     	  image->priv->pixbuf,
+			     	  pixbuf,
 			          0, 0,
 			          x, y,
 			          -1, -1,
 			          GDK_RGB_DITHER_NORMAL, 
 		              0, 0);
+	if ( resized )
+	{
+		g_object_unref ( pixbuf );
+	}
+}
+
+/* Look for and apply 'alpha' to the color specified
+ * by red, green, and blue.
+ * 0 for full transparency
+ * 0xFF fully opaque.
+ */
+void gp_image_make_color_transparent ( GpImage *image, guchar r, guchar g,
+                                        guchar b, guchar a )
+{
+	gint width, height, rowstride, n_channels;
+	gint x, y;
+	guchar *pixels, *p;
+
+	g_return_if_fail ( GP_IS_IMAGE (image) );
+
+	n_channels = gdk_pixbuf_get_n_channels (image->priv->pixbuf);
+	g_return_if_fail (gdk_pixbuf_get_colorspace (image->priv->pixbuf) == GDK_COLORSPACE_RGB);
+	g_return_if_fail (gdk_pixbuf_get_bits_per_sample (image->priv->pixbuf) == 8);
+	g_return_if_fail (gdk_pixbuf_get_has_alpha (image->priv->pixbuf));
+	g_return_if_fail (n_channels == 4);
+	width = gdk_pixbuf_get_width (image->priv->pixbuf);
+	height = gdk_pixbuf_get_height (image->priv->pixbuf);
+	rowstride = gdk_pixbuf_get_rowstride (image->priv->pixbuf);
+	
+	pixels = gdk_pixbuf_get_pixels (image->priv->pixbuf);
+	
+	for(y = 0; y < height; y++){
+		for(x = 0; x < width; x++){
+			p = pixels + y * rowstride + x * n_channels;
+			if( (p[0] == r) && (p[1] == g) && (p[2] == b) )
+			{
+				p[3] = a;
+			}	
+		}
+	}
+}
+
+/* Invert the colors without touching alpha channel
+ */
+void gp_image_invert_colors ( GpImage *image)
+{
+	gint width, height, rowstride, n_channels;
+	gint x, y;
+	guchar *pixels, *p;
+
+	g_return_if_fail ( GP_IS_IMAGE (image) );
+
+	n_channels = gdk_pixbuf_get_n_channels (image->priv->pixbuf);
+	g_return_if_fail (gdk_pixbuf_get_colorspace (image->priv->pixbuf) == GDK_COLORSPACE_RGB);
+	g_return_if_fail (gdk_pixbuf_get_bits_per_sample (image->priv->pixbuf) == 8);
+	g_return_if_fail (gdk_pixbuf_get_has_alpha (image->priv->pixbuf));
+	g_return_if_fail (n_channels == 4);
+	width = gdk_pixbuf_get_width (image->priv->pixbuf);
+	height = gdk_pixbuf_get_height (image->priv->pixbuf);
+	rowstride = gdk_pixbuf_get_rowstride (image->priv->pixbuf);
+	
+	pixels = gdk_pixbuf_get_pixels (image->priv->pixbuf);
+	
+	for(y = 0; y < height; y++){
+		for(x = 0; x < width; x++){
+			p = pixels + y * rowstride + x * n_channels;
+			p[0] = ~p[0];
+			p[1] = ~p[1];
+			p[2] = ~p[2];
+		}
+	}	
+}
+
+void
+gp_image_rotate ( GpImage *image, gint angle )
+{
+	GdkPixbuf *new;
+	
+	g_return_if_fail ( GP_IS_IMAGE (image) );
+	
+	new = gdk_pixbuf_rotate_simple (image->priv->pixbuf, angle);
+
+	if(GDK_IS_PIXBUF(new))
+	{
+		g_object_unref(image->priv->pixbuf);
+		image->priv->pixbuf = new;
+		g_object_set_data ( G_OBJECT(image), "pixbuf", image->priv->pixbuf);
+	}
+}
+
+void
+gp_image_flip ( GpImage *image, gboolean horizontal )
+{
+	GdkPixbuf *new;
+	
+	g_return_if_fail ( GP_IS_IMAGE (image) );
+	
+	new = gdk_pixbuf_flip (image->priv->pixbuf, horizontal);
+
+	if(GDK_IS_PIXBUF(new))
+	{
+		g_object_unref(image->priv->pixbuf);
+		image->priv->pixbuf = new;
+		g_object_set_data ( G_OBJECT(image), "pixbuf", image->priv->pixbuf);
+	}
+}
+
+GpImage * 
+gp_image_new_from_pixbuf ( GdkPixbuf *pixbuf, gboolean has_alpha  )
+{
+    GpImage			*image;
+	GdkRectangle	r;
+	guint			w, h;
+	GdkPixbuf		*copy;
+
+	g_return_val_if_fail ( GDK_IS_PIXBUF (pixbuf), NULL);
+
+	copy = gdk_pixbuf_copy(pixbuf);
+	g_return_val_if_fail ( GDK_IS_PIXBUF (copy), NULL);
+    
+	w = gdk_pixbuf_get_width(pixbuf);
+    h = gdk_pixbuf_get_height(pixbuf);
+
+	image   = gp_image_new( w, h, has_alpha );
+	
+	if(!GP_IS_IMAGE(image))
+	{
+		g_object_unref(copy);
+		return NULL;
+	}
+
+	g_object_unref(image->priv->pixbuf);
+    image->priv->pixbuf = copy;
+
+    return image;
+}
+
+GpImage * 
+gp_image_copy ( GpImage *image )
+{
+    GpImage 		*copy;
+    gint			width, height;
+    gboolean		has_alpha;
+
+	g_return_val_if_fail ( GP_IS_IMAGE(image), NULL);
+	g_return_val_if_fail ( GDK_IS_PIXBUF (image->priv->pixbuf), NULL);
+    
+	width = gdk_pixbuf_get_width (image->priv->pixbuf);
+    height = gdk_pixbuf_get_height (image->priv->pixbuf);
+    has_alpha = gdk_pixbuf_get_has_alpha (image->priv->pixbuf);
+
+	copy = gp_image_new ( width, height, has_alpha );
+	
+	g_return_val_if_fail ( GP_IS_IMAGE(copy), NULL);
+	
+	g_object_unref (copy->priv->pixbuf);
+	
+	copy->priv->pixbuf = gdk_pixbuf_copy(image->priv->pixbuf);
+	
+    if(!GDK_IS_PIXBUF (copy->priv->pixbuf))
+	{
+		g_object_unref(copy);
+		return NULL;
+	}
+
+    return copy;
 }
 
 gint

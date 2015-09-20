@@ -81,6 +81,8 @@ static GtkWidget *	get_gtk_image( GtkWidget *widget, gchar** xpm );
 static void			show_frame_rect	( gboolean show );
 static void         tool_toggled ( GtkToggleToolButton *button, gp_tool_enum tool );
 
+static void quick_message (GtkWidget *widget, gchar *message);
+
 /* CODE */
 
 void 
@@ -110,6 +112,11 @@ on_tool_pencil_realize (GtkToggleToolButton *button, gpointer user_data)
 void
 on_tool_free_select_toggled	(GtkToggleToolButton *button, gpointer user_data)
 {
+    if(gtk_toggle_tool_button_get_active(button))
+    {
+    	quick_message (GTK_WIDGET(button), "Sorry, but the free selection feature has\n"
+				   "not yet been implemented.");
+    }
     tool_toggled ( button, TOOL_FREE_SELECT );
 }
 
@@ -152,6 +159,11 @@ on_tool_bucket_fill_toggled	(GtkToggleToolButton *button, gpointer user_data)
 void
 on_tool_zoom_toggled (GtkToggleToolButton *button, gpointer user_data)
 {
+    if(gtk_toggle_tool_button_get_active(button))
+    {
+    	quick_message (GTK_WIDGET(button), "Sorry, but the zoom feature has\n"
+				   "not yet been implemented.");
+    }
     tool_toggled ( button, TOOL_ZOOM );
 }
 
@@ -165,6 +177,10 @@ void
 on_tool_text_toggled (GtkToggleToolButton *button, gpointer user_data)
 {
     tool_toggled ( button, TOOL_TEXT );
+	if(gtk_toggle_tool_button_get_active(button)){
+		quick_message (GTK_WIDGET(button), "Sorry, but the text feature has\n"
+					   "not yet been implemented.");
+	}
 }
 
 void 
@@ -274,6 +290,27 @@ on_rect2_toggled (GtkToggleToolButton *button, gpointer user_data)
 		cv_set_filled ( FILLED_FORE );
 	}
 }
+
+/*********************** TRANSPARENT & OPAQUE BUTTONS ***********************/
+
+void /* Toggle opaque button */
+on_sel1_toggled (GtkToggleToolButton *button, gpointer user_data)
+{
+	if ( gtk_toggle_tool_button_get_active ( button ) )
+	{
+		cv_set_transparent ( FALSE );
+	}
+}
+
+void /* Toggle transparent button */
+on_sel2_toggled (GtkToggleToolButton *button, gpointer user_data)
+{
+	if ( gtk_toggle_tool_button_get_active ( button ) )
+	{
+		cv_set_transparent ( TRUE );
+	}
+}
+/****************************************************************************/
 
 /*Option Bar realize funcitons*/
 void 
@@ -460,17 +497,15 @@ on_brush11_realize   (GtkObject *object, gpointer user_data)
 static GtkWidget * 
 get_gtk_image ( GtkWidget *widget, gchar** xpm )
 {
-	GdkPixmap *gdkpixmap	= NULL;
-    GdkBitmap *mask 		= NULL;
-    GtkWidget *gtkimage 	= NULL;
-	gdkpixmap = gdk_pixmap_create_from_xpm_d(widget->window, &mask, NULL, xpm);
-	g_assert ( gdkpixmap );
-	gtkimage = gtk_image_new_from_pixmap(gdkpixmap, mask);
+    GdkPixbuf *gdkpixbuf    = NULL;
+    GtkWidget *gtkimage     = NULL;
+    gdkpixbuf = gdk_pixbuf_new_from_xpm_data(xpm);
+    g_assert ( gdkpixbuf );
+    gtkimage = gtk_image_new_from_pixbuf ( gdkpixbuf );
     g_assert ( gtkimage );
-	g_object_unref ( G_OBJECT(gdkpixmap) );
-    g_object_unref ( G_OBJECT(mask) ); 
-	gtk_widget_show(gtkimage);
-	return gtkimage;
+    g_object_unref ( (gpointer) gdkpixbuf );
+    gtk_widget_show(gtkimage);
+    return gtkimage;
 }
 
 static void	
@@ -545,3 +580,22 @@ tool_toggled ( GtkToggleToolButton *button, gp_tool_enum tool )
 	}
 }
 
+static void quick_message (GtkWidget *widget, gchar *message)
+{
+   GtkWidget *dialog, *parent;
+   
+   do{
+		parent = widget;
+		widget = gtk_widget_get_parent(parent);
+
+   }while(widget != NULL);
+   
+   dialog = gtk_message_dialog_new (GTK_WINDOW (parent),
+				   GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+				   GTK_MESSAGE_INFO,
+				   GTK_BUTTONS_OK,
+				   message);
+
+    gtk_dialog_run (GTK_DIALOG (dialog));
+    gtk_widget_destroy (dialog);
+}

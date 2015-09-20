@@ -29,6 +29,8 @@
 #include "undo.h"
 #include "color-picker.h"
 
+#include "cv_eraser_tool.h"
+#include "cv_paintbrush_tool.h"
 
 #include <glib/gi18n.h>
 #include <gtk/gtk.h>
@@ -42,7 +44,9 @@ void		gnome_paint_init		( int argc, char *argv[] );
 void		on_window_destroy		( GtkObject *object, gpointer user_data );
 void		on_menu_about_activate  ( GtkMenuItem *menuitem, gpointer user_data );
 
-
+static void init_eraser				(GtkBuilder *builder);
+static void init_paint_brush		(GtkBuilder *builder);
+static void save_the_children		(GtkBuilder *builder);
 
 void		
 on_menu_new_activate( GtkMenuItem *menuitem, gpointer user_data)
@@ -68,7 +72,7 @@ main (int argc, char *argv[])
 {
 
  	GtkWidget   *window;
-	ColorPicker *color_picker;
+	ColorPicker *color_picker; 
 
 //	g_mem_set_vtable (glib_mem_profiler_table);
 
@@ -149,14 +153,25 @@ create_window (void)
 {
 	GtkWidget		*window;
 	GtkWidget		*widget;
+	GtkWidget		*drawing;
 	GtkBuilder		*builder;
 
 	builder = gtk_builder_new ();
     gtk_builder_add_from_file (builder, UI_FILE, NULL);
     window = GTK_WIDGET (gtk_builder_get_object (builder, "window"));
 	g_assert ( window );
+
+    widget = GTK_WIDGET (gtk_builder_get_object (builder, "flip_roate_dialog"));
+    drawing = GTK_WIDGET (gtk_builder_get_object (builder, "cv_drawing"));
+	g_object_set_data(G_OBJECT(drawing), "flip_roate_dialog", widget);
+
 	file_set_parent_window ( GTK_WINDOW(window) );	
     gtk_builder_connect_signals (builder, NULL);          
+
+	init_eraser (builder);
+	init_paint_brush (builder);
+	save_the_children (builder);
+
     g_object_unref (G_OBJECT (builder));	
 	
 	/* To show all widget that is set invisible on Glade */
@@ -171,12 +186,14 @@ on_menu_about_activate ( GtkMenuItem *menuitem, gpointer user_data )
 {
 	const gchar *authors[] = { "Rogério Ferro do Nascimento",
 							   "Juan Balderas",
+							   "Special thanks to:",
+							   "  Aron Xu",
 							   NULL };
 	GtkAboutDialog *dlg;
 	
 	dlg = GTK_ABOUT_DIALOG ( gtk_about_dialog_new () ); 
 	gtk_about_dialog_set_name ( dlg, "gnome-paint" );
-	gtk_about_dialog_set_version ( dlg, "0.3"); 
+	gtk_about_dialog_set_version ( dlg, PACKAGE_VERSION); 
 	gtk_about_dialog_set_copyright ( dlg, 
 									"(c) Rogério Ferro do Nascimento");
 	gtk_about_dialog_set_comments ( dlg, 
@@ -194,6 +211,118 @@ on_menu_about_activate ( GtkMenuItem *menuitem, gpointer user_data )
 	//gtk_about_dialog_set_logo ( dlg, pixbuf);
 	gtk_dialog_run ( GTK_DIALOG(dlg) );
 	gtk_widget_destroy ( GTK_WIDGET(dlg) );
+}
+
+static void init_eraser(GtkBuilder *builder)
+{
+	GtkWidget *erase;
+	gchar name[20];
+	gint i;
+	static gint size[4] = {
+							GP_ERASER_RECT_TINY,
+							GP_ERASER_RECT_SMALL,
+							GP_ERASER_RECT_MEDIUM,
+							GP_ERASER_RECT_LARGE
+						};
+	
+	if(NULL == builder){
+		return;
+	}
+	
+	for(i = 0; i < 4; i++)
+	{
+		sprintf(name, "erase%d", i);
+		erase = GTK_WIDGET (gtk_builder_get_object (builder, name));
+		if(!GTK_IS_WIDGET(erase))
+		{
+			printf("DEBUG: init_eraser() !GTK_IS_WIDGET(erase)\n");
+		}
+		g_signal_connect (erase, "toggled",
+		            G_CALLBACK (on_eraser_size_toggled), (gpointer)&(size[i]));
+	}
+}
+
+static void init_paint_brush(GtkBuilder *builder)
+{
+	GtkWidget *brush;
+	gchar name[20];
+	gint i;
+	static gint size[12] = {
+							GP_BRUSH_RECT_LARGE,
+							GP_BRUSH_RECT_MEDIUM,
+							GP_BRUSH_RECT_SMALL,
+							GP_BRUSH_ROUND_LARGE,
+							GP_BRUSH_ROUND_MEDIUM,
+							GP_BRUSH_ROUND_SMALL,
+							GP_BRUSH_FWRD_LARGE,
+							GP_BRUSH_FWRD_MEDIUM,
+							GP_BRUSH_FWRD_SMALL,
+							GP_BRUSH_BACK_LARGE,
+							GP_BRUSH_BACK_MEDIUM,
+							GP_BRUSH_BACK_SMALL,
+						};
+	
+	if(NULL == builder){
+		return;
+	}
+	
+	for(i = 0; i < GP_BRUSH_MAX; i++)
+	{
+		sprintf(name, "brush%d", i);
+		brush = GTK_WIDGET (gtk_builder_get_object (builder, name));
+		if(!GTK_IS_WIDGET(brush))
+		{
+			printf("DEBUG: init_eraser() !GTK_IS_WIDGET(erase)\n");
+		}
+		g_signal_connect (brush, "toggled",
+		            G_CALLBACK (on_brush_size_toggled), (gpointer)&(size[i]));
+	}
+}
+
+static void save_the_children (GtkBuilder *builder)
+{
+	GtkWidget *child, *drawing;
+
+	drawing = GTK_WIDGET (gtk_builder_get_object (builder, "cv_drawing"));
+	child = GTK_WIDGET (gtk_builder_get_object (builder, "tool-rect-select"));
+	g_object_set_data(G_OBJECT(drawing), "tool-rect-select", (gpointer)child);
+
+	/* Flip rotate dlg radio buttons */
+	child = GTK_WIDGET (gtk_builder_get_object (builder, "radiobutton_rotate"));
+	g_object_set_data(G_OBJECT(drawing), "radiobutton_rotate", (gpointer)child);
+	child = GTK_WIDGET (gtk_builder_get_object (builder, "radiobutton_rotate_90"));
+	g_object_set_data(G_OBJECT(drawing), "radiobutton_rotate_90", (gpointer)child);
+	child = GTK_WIDGET (gtk_builder_get_object (builder, "radiobutton_rotate_180"));
+	g_object_set_data(G_OBJECT(drawing), "radiobutton_rotate_180", (gpointer)child);
+	child = GTK_WIDGET (gtk_builder_get_object (builder, "radiobutton_rotate_270"));
+	g_object_set_data(G_OBJECT(drawing), "radiobutton_rotate_270", (gpointer)child);
+
+	/* Attributes dlg */
+	child = GTK_WIDGET (gtk_builder_get_object (builder, "dialog_attributes"));
+	g_object_set_data(G_OBJECT(drawing), "dialog_attributes", (gpointer)child);
+
+	/* Opaque/transparent buttons */
+	child = GTK_WIDGET (gtk_builder_get_object (builder, "sel1"));
+	g_object_set_data(G_OBJECT(drawing), "sel1", (gpointer)child);
+	child = GTK_WIDGET (gtk_builder_get_object (builder, "sel2"));
+	g_object_set_data(G_OBJECT(drawing), "sel2", (gpointer)child);
+
+	/* Attributes dlg widgets */
+	child = GTK_WIDGET (gtk_builder_get_object (builder, "attributes_entry1"));
+	g_object_set_data(G_OBJECT(drawing), "attributes_entry1", (gpointer)child);
+	child = GTK_WIDGET (gtk_builder_get_object (builder, "attributes_entry2"));
+	g_object_set_data(G_OBJECT(drawing), "attributes_entry2", (gpointer)child);
+	child = GTK_WIDGET (gtk_builder_get_object (builder, "attributes_radiobutton1"));
+	g_object_set_data(G_OBJECT(drawing), "attributes_radiobutton1", (gpointer)child);
+	child = GTK_WIDGET (gtk_builder_get_object (builder, "attributes_radiobutton2"));
+	g_object_set_data(G_OBJECT(drawing), "attributes_radiobutton2", (gpointer)child);
+	
+	child = GTK_WIDGET (gtk_builder_get_object (builder, "attributes_label6"));
+	g_object_set_data(G_OBJECT(drawing), "attributes_label6", (gpointer)child);
+	
+
+	//child = GTK_WIDGET (gtk_builder_get_object (builder, ""));
+	//g_object_set_data(G_OBJECT(drawing), "", (gpointer)child);
 }
 
 

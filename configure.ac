@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 dnl Created by Anjuta application wizard.
 
-AC_INIT(gnome-paint, 0.3.1, http://code.google.com/p/gnome-paint/)
+AC_INIT(gnome-paint, 0.4.0, http://code.google.com/p/gnome-paint/)
 
 AM_INIT_AUTOMAKE(AC_PACKAGE_NAME, AC_PACKAGE_VERSION)
 AC_CONFIG_HEADERS([config.h])
@@ -11,6 +11,9 @@ AC_ISC_POSIX
 AC_PROG_CC
 AM_PROG_CC_STDC
 AC_HEADER_STDC
+
+# Random crap that I can't figure out elsewhere
+LIBS="-L/usr/lib64 -lm"
 
 
 
@@ -32,7 +35,7 @@ AM_PROG_LIBTOOL
 
 
 
-PKG_CHECK_MODULES(GNOME_PAINT, [gtk+-2.0 >= 2.8])
+PKG_CHECK_MODULES(GNOME_PAINT, [gtk+-2.0 >= 2.16])
 
 
 

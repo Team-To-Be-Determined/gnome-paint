@@ -39,7 +39,7 @@
 #include "cv_rect_select.h"
 #include "undo.h"
 #include "color-picker.h"
-
+#include "cv_eraser_tool.h"
 
 #include <glib/gi18n.h>
 #include <gtk/gtk.h>
@@ -113,6 +113,17 @@ cv_set_filled ( gp_filled filled )
 	gdk_window_process_updates (gtk_widget_get_parent_window(cv.widget), FALSE);
 }
 
+/* Set whether or not selections are transparent.
+ * TRUE   - if transparent
+ * FALSE  - if opaque
+ */
+void
+cv_set_transparent ( gboolean transparent)
+{
+	cv.transparent	=	transparent;
+	gtk_widget_queue_draw ( cv.widget );
+	gdk_window_process_updates (gtk_widget_get_parent_window(cv.widget), FALSE);
+}
 
 void
 cv_set_tool ( gp_tool_enum tool )
@@ -131,7 +142,7 @@ cv_set_tool ( gp_tool_enum tool )
 	        cv_tool = tool_rect_select_init ( &cv );
             break;
         case TOOL_ERASER:
-	        cv_tool = NULL;
+	        cv_tool = tool_eraser_init ( &cv );
             break;
         case TOOL_COLOR_PICKER:
         	//cv_tool = tool_color_pick_init ( &cv );
@@ -215,7 +226,7 @@ cv_set_pixbuf	(const GdkPixbuf	*pixbuf)
                             0, 0);
         g_object_unref(tmp);
 		gtk_widget_queue_draw (cv.widget);
-	}	
+	}
 }
 
 GdkPixbuf *
@@ -276,8 +287,11 @@ on_cv_drawing_realize (GtkWidget *widget, gpointer user_data)
 	                             GDK_CAP_ROUND, GDK_JOIN_ROUND );
     
 	cv_set_filled ( FILLED_NONE );
+	cv_set_transparent ( FALSE );
 	cv_resize_set_canvas ( &cv );
+	/* TODO: sync width 7 height to attributes dlg */
 	cv_create_pixmap ( 320, 200, TRUE);
+	cv.pb_clipboard = NULL;
 }
 
 void 
@@ -357,13 +371,22 @@ on_cv_drawing_expose_event	(   GtkWidget	   *widget,
 								GdkEventExpose *event,
                					gpointer       user_data )
 {
+#if GTK_MAJOR_VERSION >= 2 && GTK_MINOR_VERSION >= 18
     gdk_draw_drawable (	widget->window,
                     	widget->style->fg_gc[gtk_widget_get_state(widget)],
     	                cv.pixmap,
     	                event->area.x, event->area.y,
     	                event->area.x, event->area.y,
     	                event->area.width, event->area.height);	
-	
+#else
+	gdk_draw_drawable (	widget->window,
+                    	widget->style->fg_gc[GTK_WIDGET_STATE(widget)],
+    	                cv.pixmap,
+    	                event->area.x, event->area.y,
+    	                event->area.x, event->area.y,
+    	                event->area.width, event->area.height);
+#endif
+
 	if ( cv_tool != NULL )
 	{
 		cv_tool->draw();

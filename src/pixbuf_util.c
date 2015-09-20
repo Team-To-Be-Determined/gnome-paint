@@ -20,6 +20,7 @@
 
 
 #include <gtk/gtk.h>
+#include <glib/gprintf.h>
 #include "pixbuf_util.h"
 
 struct fillinfo
@@ -29,9 +30,12 @@ struct fillinfo
    int pixelsize; 
    int width;
    int height;
-   unsigned char or, og, ob, r, g, b;
+   unsigned char or, og, ob, oa;
+   unsigned char r, g, b, a;
+   int gx, gw, gy, gh;
 };
 
+//static gint gx, gw, gy, gh;
 
 static void setpixel(guchar *pixels, gint rowstride, gint n_channels, gint x, gint y, guint color);
 static gint getpixel(guchar *pixels, gint rowstride, gint n_channels, gint x, gint y);
@@ -41,24 +45,31 @@ static void
 flood_fill_algo(struct fillinfo *info, int x, int y);
 
 
-void fill_draw(GdkDrawable *drawable, GdkGC *gc, guint fill_color, guint x, guint y)
+GdkRectangle fill_draw(GdkDrawable *drawable, GdkGC *gc, guint fill_color, guint x, guint y)
 {
 	GdkPixbuf *pixbuf;
 	gint width, height;
 	struct fillinfo fillinfo;
 	guchar *p;
+	GdkRectangle rect = {0, 0, 0, 0};
 	
-	printf("fill_draw fill_color: %.08X\n", fill_color);
-	printf("fill_draw x: %d, y: %d\n", x, y);
+	//printf("fill_draw fill_color: %.08X\n", fill_color);
+	//printf("fill_draw x: %d, y: %d\n", x, y);
 	
 	gdk_drawable_get_size(drawable, &width, &height);
-	printf("fill_draw w: %d, h: %d\n", width, height);
+	//printf("fill_draw w: %d, h: %d\n", width, height);
 	pixbuf = gdk_pixbuf_new(GDK_COLORSPACE_RGB, TRUE, 8, width, height);
 
 	gdk_pixbuf_fill(pixbuf, 0);
 
 	/* 1 get pixbuf from drawable */
 	gdk_pixbuf_get_from_drawable(pixbuf, drawable, NULL, 0, 0, 0, 0, width, height);
+	
+	fillinfo.gx = x;
+	fillinfo.gw = x;
+	fillinfo.gy = y;
+	fillinfo.gh = y;
+
 	/* 2 draw on pixbuf */
 	//fill_shape(pixbuf, x, y, fill_color);
 	fillinfo.rgb = gdk_pixbuf_get_pixels (pixbuf);
@@ -69,21 +80,38 @@ void fill_draw(GdkDrawable *drawable, GdkGC *gc, guint fill_color, guint x, guin
     fillinfo.r = getr(fill_color);
     fillinfo.g = getg(fill_color);
     fillinfo.b = getb(fill_color);
+    fillinfo.a = geta(fill_color);
     p = fillinfo.rgb + y * fillinfo.rowstride + x * fillinfo.pixelsize;
     fillinfo.or = *p;
     fillinfo.og = *(p + 1);
     fillinfo.ob = *(p + 2);
+    fillinfo.oa = *(p + 3);
+    
+    printf("     new color: %.02X%.02X%.02X%.02X\n", fillinfo.r, fillinfo.g, fillinfo.b, fillinfo.a);
+    printf("original color: %.02X%.02X%.02X%.02X\n", fillinfo.or, fillinfo.og, fillinfo.ob, fillinfo.oa);
+
     flood_fill_algo(&fillinfo, x, y);
 
-	/* 3 draw pixbuf back onto drawable. Notice xdest & ydest */
+	/* 3 draw pixbuf back onto drawable.  */
 	gdk_draw_pixbuf(drawable, gc, pixbuf, 0, 0, 0, 0, gdk_pixbuf_get_width(pixbuf),
 					gdk_pixbuf_get_height(pixbuf), GDK_RGB_DITHER_NONE, 0, 0);
 	
 	/* clean up */
 	g_object_unref(pixbuf);
+    
+    fillinfo.gw = ABS(fillinfo.gw - fillinfo.gx);
+	fillinfo.gh = ABS(fillinfo.gh - fillinfo.gy);
+	
+	/*g_printf("fillinfo.gx: %d, fillinfo.gy: %d, fillinfo.gw: %d, fillinfo.
+	fillinfo.gh: %d\n", fillinfo.gx, fillinfo.gy, fillinfo.gw, fillinfo.gh);
+	*/
+	rect.x = fillinfo.gx; rect.y = fillinfo.gy;
+	rect.width = fillinfo.gw + 1; rect.height = fillinfo.gh + 1;
+	
+	/* Return bounding rect of fill */
+	return rect;
 }
 
-/* Copied from gpaint */
 /* Get a pixel's value at (x,y)
  * For pixbufs with alpha channel only.
  * Sets 'color' as rgb value
@@ -180,7 +208,7 @@ setpixel(guchar *pixels, gint rowstride, gint n_channels, gint x, gint y, guint 
 	p[0] = getr(color);/*red*/
 	p[1] = getg(color);/*green*/
 	p[2] = getb(color);/*blue*/
-	p[3] = 0xFF; /* alpha */
+	p[3] = geta(color); /* alpha */
 
 }
 
@@ -191,19 +219,15 @@ getpixel(guchar *pixels, gint rowstride, gint n_channels, gint x, gint y)
 {
 	guchar *p;
 	gint color = 0;
-	FILE *fp;
 	
 	p = pixels + (y * rowstride + x * n_channels);
 
-	fp = fopen("flood.txt", "a");
-	fprintf(fp, "x: %d, y: %d rs: %d, nc: %d, p: %p\n", x, y, rowstride, n_channels, p);
-	fclose(fp);
-	color = col(p[0], p[1], p[2]);
+	color = col_rgba(p[0], p[1], p[2], p[3]);
 
 	return color;
 }
 
-
+/* Copped & modified from gpaint :) */
 struct fillpixelinfo
 {
    int y, xl, xr, dy;
@@ -237,11 +261,13 @@ static __inline__ int
 is_old_pixel_value(struct fillinfo *info, int x, int y)
 {
     unsigned char *p = info->rgb + y * info->rowstride + x * info->pixelsize;
-    unsigned char or, og, ob;
+    unsigned char or, og, ob, oa;
     or = *p;
     og = *(p + 1);
     ob = *(p + 2);
-    if ((or == info->or) && (og == info->og) && (ob == info->ob))
+    oa = *(p + 3);
+    if ((or == info->or) && (og == info->og) && 
+    	(ob == info->ob) && (oa == info->oa))
     {
         return 1;
     }
@@ -253,11 +279,17 @@ static __inline__ void
 set_new_pixel_value(struct fillinfo *info, int x, int y)
 {
     unsigned char *p = info->rgb + y * info->rowstride + x * info->pixelsize;
-    *p = info->r;
+    
+    *p		 = info->r;
     *(p + 1) = info->g;
     *(p + 2) = info->b;
+    *(p + 3) = info->a;
+    
+    if (x <= info->gx)info->gx=x;
+	if (x > info->gw)info->gw=x;
+	if (y <= info->gy)info->gy=y;
+	if (y > info->gh)info->gh=y;
 }
-
 /*
  * algorithm based on SeedFill.c from GraphicsGems 1
  */
@@ -269,6 +301,7 @@ flood_fill_algo(struct fillinfo *info, int x, int y)
     struct fillpixelinfo stack[STACKSIZE];
     struct fillpixelinfo * sp = stack;
     int l, x1, x2, dy;
+    
       
     if ((x >= 0) && (x < info->width) && (y >= 0) && (y < info->height))
     {

@@ -67,7 +67,13 @@ gnome_paint_SOURCES = \
 	clipboard.c  \
 	clipboard.h  \
 	cv_rect_select.c  \
-	cv_rect_select.h
+	cv_rect_select.h  \
+	selection.c  \
+	selection.h  \
+	cv_eraser_tool.c  \
+	cv_eraser_tool.h  \
+	image_menu.c  \
+	image_menu.h
 
 gnome_paint_CFLAGS = \
 	-DG_DISABLE_DEPRECATED\
@@ -81,10 +87,9 @@ gnome_paint_LDFLAGS = \
 	-Wl,--export-dynamic
 
 gnome_paint_LDADD = \
-	$(GNOME_PAINT_LIBS)
+	$(GNOME_PAINT_LIBS) -lX11
 
 SUBDIRS = \
-	pixmaps\
 	pixmaps
 
 # Remove glade directory on uninstall

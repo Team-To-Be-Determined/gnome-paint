@@ -50,13 +50,15 @@ typedef struct
 	GtkWidget *		toplevel;
 	GtkWidget *		widget;
 	GdkPixmap *		drawing;
+	GdkPixmap *		pixmap;
 	GdkGC *			gc_fg;
 	GdkGC *			gc_bg;
 	GdkGC *			gc_fg_pencil;
 	GdkGC *			gc_bg_pencil;
-	GdkPixmap *		pixmap;
 	gp_filled		filled;
 	gint			line_width;
+	gboolean		transparent;
+	GdkPixbuf		*pb_clipboard;
 } gp_canvas;
 
 /* Tool Type*/
