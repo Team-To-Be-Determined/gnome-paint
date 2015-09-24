@@ -1,0 +1,28 @@
+"Behave identically to MS Paint."  Sort of.
+
+Tool-specific menu below.  GTK font selection dropdown and font type selection.
+    - in the tool option selector... whatever
+
+Text entry/wrapping behaviour:
+    No wrapping, just run the current line off the edge.
+
+User interaction with the on-canvas text-entry widget:
+    - requirement: should be able to switch between editing and repositioning
+    - implementation: borderless text-entry widget surrounded by a border?
+      (rasterize the widget upon committing the text)
+
+Correct undo/redo behaviour. (by which I mean nuking the text)
+
+
+Implementation doodles:
+    - get a floating text tool (with a border)
+    - figure out how to dynamically reposition it
+    - figure out how to rasterize it and apply it to the canvas pixbuf
+
+Useful resources:
+http://stackoverflow.com/questions/4183854/overlapping-widgets-gtk
+https://developer.gnome.org/gobject/stable/gtype-non-instantiable-classed.html
+http://stackoverflow.com/questions/24570168/how-to-achieve-multiple-inheritance-by-registering-different-types-using-gobject
+http://www.gtk.org/tutorial1.2/gtk_tut-22.html
+https://developer.gnome.org/gtk3/stable/GtkContainer.html
+https://developer.gnome.org/gtk3/stable/GtkFixed.html
