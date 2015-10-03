@@ -33,6 +33,10 @@
 #include "selection.h"
 #include "gp-image.h"
 
+
+/* The container over the canvas which the text box will be inserted into */
+static GtkFixed *cv_fixed;
+
 /*private data*/
 typedef struct {
 	gp_tool			tool;
@@ -84,11 +88,17 @@ tool_text_init ( gp_canvas * canvas )
 	m_priv->tool.draw			= draw;
 	m_priv->tool.reset			= reset;
 	m_priv->tool.destroy		= destroy;
-
     // m_priv->text_view           = gtk_text_view_new
 	
 	return &m_priv->tool;
 }
+
+void 
+on_cv_fixed_realize(GtkWidget *fixed, gpointer user_data)
+{
+    cv_fixed = fixed;
+}
+
 
 static gboolean
 button_press ( GdkEventButton *event )
@@ -186,7 +196,7 @@ draw ( void )
 static void 
 reset ( void )
 {
-    set_cursor ( GDK_DOTBOX );
+    set_cursor ( GDK_XTERM );
 }
 
 static void 
@@ -201,7 +211,7 @@ destroy ( gpointer data  )
 static void 
 set_cursor ( GdkCursorType cursor_type )
 {
-    /* static GdkCursorType last_cursor = GDK_LAST_CURSOR;
+    static GdkCursorType last_cursor = GDK_LAST_CURSOR;
     if ( cursor_type != last_cursor )
     {
         GdkCursor *cursor = gdk_cursor_new ( cursor_type );
@@ -209,7 +219,7 @@ set_cursor ( GdkCursorType cursor_type )
 	    gdk_window_set_cursor ( m_priv->cv->drawing, cursor );
 	    gdk_cursor_unref( cursor );
         last_cursor = cursor_type;
-    } */
+    }
 }
 
 static void 
@@ -232,17 +242,16 @@ set_point ( GdkPoint *p )
 static void 
 change_cursor ( GdkPoint *p )
 {
-    /* 
     GdkCursorType cursor;
     cursor = gp_selection_get_cursor ( p );
     if ( cursor == GDK_BLANK_CURSOR ) 
     {
-        set_cursor ( GDK_DOTBOX );
+        set_cursor ( GDK_XTERM );
     }
     else
     {
         set_cursor ( cursor );
-    } */
+    }
 }
 
 
