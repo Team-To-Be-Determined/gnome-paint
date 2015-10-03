@@ -177,10 +177,6 @@ void
 on_tool_text_toggled (GtkToggleToolButton *button, gpointer user_data)
 {
     tool_toggled ( button, TOOL_TEXT );
-	if(gtk_toggle_tool_button_get_active(button)){
-		quick_message (GTK_WIDGET(button), "Sorry, but the text feature has\n"
-					   "not yet been implemented.");
-	}
 }
 
 void 

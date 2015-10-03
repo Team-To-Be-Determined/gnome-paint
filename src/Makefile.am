@@ -68,6 +68,8 @@ gnome_paint_SOURCES = \
 	clipboard.h  \
 	cv_rect_select.c  \
 	cv_rect_select.h  \
+	cv_text_tool.c  \
+	cv_text_tool.h  \
 	selection.c  \
 	selection.h  \
 	cv_eraser_tool.c  \

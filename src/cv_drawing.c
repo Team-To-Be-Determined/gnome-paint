@@ -40,6 +40,7 @@
 #include "undo.h"
 #include "color-picker.h"
 #include "cv_eraser_tool.h"
+#include "cv_text_tool.h"
 
 #include <glib/gi18n.h>
 #include <gtk/gtk.h>
@@ -164,7 +165,7 @@ cv_set_tool ( gp_tool_enum tool )
 	        cv_tool = tool_paintbrush_init ( &cv );
             break;
         case TOOL_TEXT:
-	        cv_tool = NULL;
+	        cv_tool = tool_text_init ( &cv );
             break;
         case TOOL_LINE:
             cv_tool = tool_line_init ( &cv );
