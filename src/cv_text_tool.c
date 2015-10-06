@@ -44,6 +44,23 @@ typedef struct {
     GtkTextView     *text_view;
 } private_data;
 
+/* GDK private stuff hack */
+struct textview_impl_priv {
+    GtkTextWindowType type;
+    GtkWidget *widget;
+    GdkWindow *window;
+    GdkWindow *bin_window;
+    // There is some extra data here we don't care about
+
+};
+
+/* Signal handeler to parrent GDK window hack */
+static gboolean 
+draw_text_only(GdkWindow *bin, GdkEventExpose *event)
+{
+    return FALSE;
+}
+
 /*Member functions*/
 
 static gboolean	button_press	( GdkEventButton *event );
@@ -88,15 +105,35 @@ tool_text_init ( gp_canvas * canvas )
 	m_priv->tool.draw			= draw;
 	m_priv->tool.reset			= reset;
 	m_priv->tool.destroy		= destroy;
-    // m_priv->text_view           = gtk_text_view_new
-	
+    m_priv->text_view           = GTK_TEXT_VIEW(gtk_text_view_new());
+
+    gtk_fixed_put(cv_fixed, GTK_WIDGET(m_priv->text_view), 0, 0);
+    gtk_widget_set_size_request(GTK_WIDGET(m_priv->text_view), 300, 300);
+    struct textview_impl_priv *japan =
+        (struct textview_impl_priv *)m_priv->text_view->text_window;
+//    gdk_window_set_composited(japan->bin_window, TRUE);
+    GError *errz = NULL;
+    GdkPixbuf *bg = gdk_pixbuf_new_from_file("/home/andrew/Desktop/japan.jpg", &errz);
+    if(!bg)
+        fprintf(stderr, "PAYATTENTION WATERLO!");
+            
+
+//     g_signal_connect_after (japan->window, "expose-event",
+//                                       G_CALLBACK (draw_text_only), NULL);
+
+ 
+ GdkPixmap *japans = gdk_pixmap_new(NULL, 5, 5, 32);
+ gdk_draw_pixbuf(japans, NULL, bg, 0, 0, 0, 0, -1, -1, GDK_RGB_DITHER_NONE, 0, 0); 
+ gdk_window_set_back_pixmap(japan->bin_window, m_priv->cv->pixmap, FALSE);
+
+    gtk_widget_show(GTK_WIDGET(m_priv->text_view));
 	return &m_priv->tool;
 }
 
 void 
 on_cv_fixed_realize(GtkWidget *fixed, gpointer user_data)
 {
-    cv_fixed = fixed;
+    cv_fixed = GTK_FIXED(fixed);
 }
 
 
