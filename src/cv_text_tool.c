@@ -108,7 +108,7 @@ tool_text_init ( gp_canvas * canvas )
     m_priv->text_view           = GTK_TEXT_VIEW(gtk_text_view_new());
 
     gtk_fixed_put(cv_fixed, GTK_WIDGET(m_priv->text_view), 0, 0);
-    gtk_widget_set_size_request(GTK_WIDGET(m_priv->text_view), 300, 300);
+    gtk_widget_set_size_request(GTK_WIDGET(m_priv->text_view), GTK_WIDGET(cv_fixed)->allocation.width, GTK_WIDGET(cv_fixed)->allocation.height);
     struct textview_impl_priv *japan =
         (struct textview_impl_priv *)m_priv->text_view->text_window;
 //    gdk_window_set_composited(japan->bin_window, TRUE);
