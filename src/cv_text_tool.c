@@ -148,6 +148,7 @@ on_cv_fixed_realize(GtkWidget *fixed, gpointer user_data)
 static gboolean
 button_press ( GdkEventButton *event )
 {
+    // TODO: This was from rect_select. What do we even do here?
     /* GdkPoint p;
     p.x = (gint)event->x;
     p.y = (gint)event->y;
@@ -185,6 +186,7 @@ button_press ( GdkEventButton *event )
 static gboolean
 button_release ( GdkEventButton *event )
 {
+    // TODO: This was from rect_select. What do we even do here?
     /* if ( event->type == GDK_BUTTON_RELEASE )
     {
         if ( m_priv->state == SEL_DRAWING )
@@ -204,6 +206,7 @@ button_release ( GdkEventButton *event )
 static gboolean
 button_motion ( GdkEventMotion *event )
 {
+    // TODO: This was from rect_select. What do we even do here?
     /*
     GdkPoint p;
     p.x = (gint)event->x;
@@ -235,6 +238,7 @@ button_motion ( GdkEventMotion *event )
 static void
 draw ( void )
 {
+    // TODO: This was from rect_select. What do we even do here?
     /* gp_selection_draw (NULL); */
 }
 
@@ -281,6 +285,7 @@ set_cursor ( GdkCursorType cursor_type )
 static void
 set_point ( GdkPoint *p )
 {
+    // TODO: This was from rect_select. What do we even do here?
     /*
     gint x1,y1;
     GdkRectangle rect;
