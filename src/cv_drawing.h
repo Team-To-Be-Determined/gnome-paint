@@ -28,6 +28,7 @@
 
 #include <gdk-pixbuf/gdk-pixbuf.h>
 
+extern gp_tool *cv_tool;
 
 void		cv_set_color_bg			( GdkColor *color );
 void		cv_set_color_fg			( GdkColor *color );

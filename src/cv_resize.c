@@ -337,7 +337,7 @@ on_cv_right_button_release_event (  GtkWidget	   *widget,
 static void
 cv_resize_start ( void )
 {
-	b_rz_init	=	TRUE;
+	b_rz_init	=	!cv_tool->no_resize;
 }
 
 static void

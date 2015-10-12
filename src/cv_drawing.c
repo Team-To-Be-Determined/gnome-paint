@@ -50,10 +50,11 @@ static GdkGC * 	cv_create_new_gc	( char * name );
 static void		cv_create_pixmap	(gint width, gint height, gboolean b_resize);
 static void		cv_print_pos		( gint x, gint y );
 
+/* Member data. */
+gp_tool				*cv_tool		=	NULL;
 
 /* private data  */
 static gp_canvas	cv;
-static gp_tool		*cv_tool		=	NULL;
 static GdkColor 	white_color		=	{ 0, 0xffff, 0xffff, 0xffff  };
 static GdkColor 	black_color		=	{ 0, 0x0000, 0x0000, 0x0000  };
 static GtkWidget	*lb_pos			=	NULL;

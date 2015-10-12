@@ -22,6 +22,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor Boston, MA 02110-1301,  USA
  */
 
+#include <assert.h>
 #include <gtk/gtk.h>
 
 #include "cv_rect_select.h"
@@ -33,6 +34,9 @@
 #include "selection.h"
 #include "gp-image.h"
 
+/* TODO dynamically re-sizeable text entry */
+#define TEXT_WIDTH 200
+#define TEXT_HEIGHT 100
 
 /* The container over the canvas which the text box will be inserted into */
 static GtkFixed *cv_fixed;
@@ -41,8 +45,14 @@ static GtkFixed *cv_fixed;
 typedef struct {
     gp_tool         tool;
     gp_canvas       *cv;
+    enum {
+        TEXT_WAITING,
+        TEXT_PLACED
+    } state;
     GtkTextView     *text_view;
-    GtkTextMark     *start_text_mark;
+    gboolean        moving;
+    gint            last_x;
+    gint            last_y;
 } private_data;
 
 /* GDK private stuff hack */
@@ -87,7 +97,7 @@ destroy_private_data( void )
     m_priv = NULL;
 }
 
-/* Signal handeler to unfuck scrolling when textview grows too big */
+/* Signal handler to unfuck scrolling when textview grows too big */
 static gboolean
 unfuck_scroll(GtkTextView *textview, ...)
 {
@@ -101,10 +111,142 @@ unfuck_scroll(GtkTextView *textview, ...)
     return FALSE;
 }
 
+static void
+ghetto_text_window_composite(GtkAllocation *alloc)
+{
+    assert(m_priv->text_view);
+
+    gint cv_width, cv_height;
+    gdk_pixmap_get_size(m_priv->cv->pixmap, &cv_width, &cv_height);
+
+    if (alloc->x + alloc->width > cv_width) {
+        alloc->width = cv_width - alloc->x;
+    }
+    if (alloc->y + alloc->height > cv_height) {
+        alloc->height = cv_height - alloc->y;
+    }
+
+    GdkPixbuf *tmpbuf;
+    GdkPixmap *tmpmap = gdk_pixmap_new(GDK_DRAWABLE(m_priv->cv->pixmap),
+                                       alloc->width,
+                                       alloc->height,
+                                       -1);
+    assert(tmpmap);
+
+    tmpbuf = gdk_pixbuf_get_from_drawable(NULL,
+                                          GDK_DRAWABLE(m_priv->cv->pixmap),
+                                          NULL,
+                                          alloc->x,
+                                          alloc->y,
+                                          0,
+                                          0,
+                                          alloc->width,
+                                          alloc->height);
+    assert(tmpbuf);
+    gdk_draw_pixbuf(GDK_DRAWABLE(tmpmap),
+                    NULL,
+                    tmpbuf,
+                    0, 0,
+                    0, 0,
+                    -1, -1,
+                    GDK_RGB_DITHER_NONE, 0, 0);
+    g_object_unref(tmpbuf);
+
+    struct textview_impl_priv *japan =
+        (struct textview_impl_priv *)m_priv->text_view->text_window;
+    gdk_window_set_back_pixmap(japan->bin_window, tmpmap, FALSE);
+
+    g_object_unref(tmpmap);
+}
+
+static void
+render_to_canvas(void)
+{
+    gint text_x, text_y;
+    gtk_container_child_get(GTK_CONTAINER(cv_fixed),
+                            GTK_WIDGET(m_priv->text_view),
+                            "x",
+                            &text_x,
+                            "y",
+                            &text_y,
+                            NULL);
+    gtk_widget_queue_draw ( m_priv->cv->widget );
+    struct textview_impl_priv *japan =
+        (struct textview_impl_priv *)m_priv->text_view->text_window;
+    gdk_window_redirect_to_drawable(japan->bin_window,
+                                    m_priv->cv->pixmap,
+                                    0,
+                                    0,
+                                    text_x,
+                                    text_y,
+                                    -1,
+                                    -1);
+    gtk_text_view_set_cursor_visible(m_priv->text_view, FALSE);
+    unfuck_scroll(NULL);
+
+    gtk_widget_destroy(GTK_WIDGET(m_priv->text_view));
+    m_priv->text_view = NULL;
+    gtk_widget_queue_draw(m_priv->cv->widget);
+    gdk_window_process_updates(gtk_widget_get_parent_window(m_priv->cv->widget),
+                               FALSE);
+}
+
+#if 0
+/* XXX shelved for now ... */
+gboolean
+on_text_button_press_event (	GtkWidget	   *widget, 
+                                GdkEventButton *event,
+                                gpointer       user_data )
+{
+    fprintf(stderr, "whoop3\n");
+    if (event->type == GDK_BUTTON_PRESS && event->button == RIGHT_BUTTON) {
+        fprintf(stderr, "whoop\n");
+        m_priv->moving = TRUE;
+        m_priv->last_x = (gint)event->x;
+        m_priv->last_y = (gint)event->y;
+    }
+
+    return TRUE;
+}
+
+gboolean
+on_text_button_release_event (	GtkWidget	   *widget, 
+                                GdkEventButton *event,
+                                gpointer       user_data )
+{
+    fprintf(stderr, "whoop4\n");
+	if (event->type == GDK_BUTTON_RELEASE && event->button == RIGHT_BUTTON) {
+        m_priv->moving = FALSE;
+    }
+
+	return TRUE;
+}
+									
+gboolean
+on_text_motion_notify_event (	GtkWidget      *widget,
+                                GdkEventMotion *event,
+                                gpointer        user_data)
+{
+    fprintf(stderr, "whoop2 %f %f\n", event->x, event->y);
+	if (m_priv->moving) {
+        GtkAllocation tv_alloc = widget->allocation;
+        tv_alloc.x = event->x;
+        tv_alloc.y = event->y;
+        gtk_fixed_move(cv_fixed,
+                       widget,
+                       event->x,
+                       event->y);
+        ghetto_text_window_composite(&tv_alloc);
+    }
+
+    return TRUE;
+}
+#endif
+
 gp_tool *
 tool_text_init ( gp_canvas * canvas )
 {
-    create_private_data ();
+    create_private_data();
     m_priv->cv                  = canvas;
     m_priv->tool.button_press   = button_press;
     m_priv->tool.button_release = button_release;
@@ -112,30 +254,10 @@ tool_text_init ( gp_canvas * canvas )
     m_priv->tool.draw           = draw;
     m_priv->tool.reset          = reset;
     m_priv->tool.destroy        = destroy;
-    m_priv->text_view           = GTK_TEXT_VIEW(gtk_text_view_new());
-    m_priv->start_text_mark     = gtk_text_mark_new("japan", FALSE);
 
-    gtk_fixed_put(cv_fixed, GTK_WIDGET(m_priv->text_view), 0, 0);
-    gtk_widget_set_size_request(GTK_WIDGET(m_priv->text_view),
-                                GTK_WIDGET(cv_fixed)->allocation.width,
-                                GTK_WIDGET(cv_fixed)->allocation.height);
-    struct textview_impl_priv *japan =
-        (struct textview_impl_priv *)m_priv->text_view->text_window;
-    gdk_window_set_back_pixmap(japan->bin_window, m_priv->cv->pixmap, FALSE);
+    m_priv->state               = TEXT_WAITING;
+    m_priv->text_view           = NULL;
 
-    gtk_widget_show(GTK_WIDGET(m_priv->text_view));
-
-    GtkTextBuffer *japan_text_buf = gtk_text_view_get_buffer(m_priv->text_view);
-    GtkTextIter start_iter;
-    gtk_text_buffer_get_iter_at_offset (japan_text_buf, &start_iter, 7);
-    gtk_text_buffer_add_mark(japan_text_buf,
-                             m_priv->start_text_mark,
-                             &start_iter);
-
-    gtk_text_view_set_wrap_mode(m_priv->text_view, GTK_WRAP_CHAR);
-
-    g_signal_connect_after (m_priv->text_view, "event",
-                            G_CALLBACK (unfuck_scroll), NULL);
     return &m_priv->tool;
 }
 
@@ -148,36 +270,71 @@ on_cv_fixed_realize(GtkWidget *fixed, gpointer user_data)
 static gboolean
 button_press ( GdkEventButton *event )
 {
-    // TODO: This was from rect_select. What do we even do here?
-    /* GdkPoint p;
-    p.x = (gint)event->x;
-    p.y = (gint)event->y;
-    if ( event->type == GDK_BUTTON_PRESS )
-    {
-        if ( gp_selection_start_action ( &p ) )
-        {
-            m_priv->state   =   SEL_ACTION;
+    fprintf(stderr, "boop\n");
+    if (event->type == GDK_BUTTON_PRESS) {
+        switch (m_priv->state) {
+        case TEXT_WAITING: {
+            assert(!m_priv->text_view);
+            m_priv->text_view = GTK_TEXT_VIEW(gtk_text_view_new());
+            m_priv->tool.no_resize = TRUE;
+            m_priv->state = TEXT_PLACED;
+
+            GtkAllocation tv_alloc;
+            gint x = (gint)event->x, y = (gint)event->y;
+
+            gint cv_width = GTK_WIDGET(cv_fixed)->allocation.width,
+                 cv_height = GTK_WIDGET(cv_fixed)->allocation.height;
+
+            tv_alloc = (GtkAllocation) {
+                .x = x,
+                .y = y,
+                .width = x + TEXT_WIDTH > cv_width
+                            ? cv_width - x
+                            : TEXT_WIDTH,
+                .height = y + TEXT_HEIGHT > cv_height
+                            ? cv_height - y
+                            : TEXT_HEIGHT
+            };
+
+            gtk_fixed_put(cv_fixed, GTK_WIDGET(m_priv->text_view), x, y);
+            gtk_widget_set_size_request(GTK_WIDGET(m_priv->text_view),
+                                        tv_alloc.width,
+                                        tv_alloc.height);
+            gtk_text_view_set_wrap_mode(m_priv->text_view, GTK_WRAP_CHAR);
+            gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(m_priv->text_view),
+                                             TRUE);
+
+            ghetto_text_window_composite(&tv_alloc);
+
+            /* XXX
+            g_signal_connect_after (m_priv->text_view, "popup-menu",
+                              G_CALLBACK (gtk_true),
+                              NULL);
+            g_signal_connect_after (m_priv->text_view, "populate-popup",
+                              G_CALLBACK (gtk_true),
+                              NULL);
+            g_signal_connect(m_priv->text_view, "button-press-event",
+                                   G_CALLBACK (on_text_button_press_event), NULL);
+            g_signal_connect(m_priv->text_view, "button-release-event",
+                                   G_CALLBACK (on_text_button_release_event), NULL);
+            g_signal_connect(m_priv->text_view, "motion-notify-event",
+                                   G_CALLBACK (on_text_motion_notify_event), NULL);
+            XXX */
+            g_signal_connect_after (m_priv->text_view, "event",
+                                    G_CALLBACK (unfuck_scroll), NULL);
+
+            gtk_widget_show(GTK_WIDGET(m_priv->text_view));
+            gtk_widget_grab_focus(GTK_WIDGET(m_priv->text_view));
+            } break;
+        case TEXT_PLACED: {
+            /* if we received this, it means the click was outside the box - we
+             * should therefore draw the current text to the canvas and
+             * re-initialize */
+            render_to_canvas();
+            m_priv->state = TEXT_WAITING;
+            } break;
         }
-        else
-        {
-            gp_selection_set_floating ( TRUE );
-            gp_selection_set_active ( FALSE );
-            gp_selection_clipbox_set_start_point ( &p );
-            gp_selection_clipbox_set_end_point ( &p );
-            gp_selection_set_active ( TRUE );
-            m_priv->state   =   SEL_DRAWING;
-        }
-        gp_selection_set_borders ( FALSE );
-        gtk_widget_queue_draw ( m_priv->cv->widget );
     }
-    else
-    if ( event->type == GDK_2BUTTON_PRESS )
-    {
-        if ( gp_selection_start_action ( &p ) )
-        {
-            gp_selection_set_floating ( FALSE );
-        }
-    } */
 
     return TRUE;
 }
@@ -186,6 +343,7 @@ button_press ( GdkEventButton *event )
 static gboolean
 button_release ( GdkEventButton *event )
 {
+    fprintf(stderr, "beep\n");
     // TODO: This was from rect_select. What do we even do here?
     /* if ( event->type == GDK_BUTTON_RELEASE )
     {
@@ -252,18 +410,11 @@ static void
 destroy ( gpointer data  )
 {
     g_print("text tool destroy\n");
-    gtk_widget_queue_draw ( m_priv->cv->widget );
-    struct textview_impl_priv *japan =
-        (struct textview_impl_priv *)m_priv->text_view->text_window;
-    gdk_window_redirect_to_drawable(japan->bin_window, m_priv->cv->pixmap, 0, 0,
-                                    0, 0, -1, -1);
-    gtk_text_view_set_cursor_visible(m_priv->text_view, FALSE);
-    unfuck_scroll(NULL);
 
-    gtk_widget_destroy(GTK_WIDGET(m_priv->text_view));
-    gtk_widget_queue_draw(m_priv->cv->widget);
-    gdk_window_process_updates(gtk_widget_get_parent_window(m_priv->cv->widget),
-                               FALSE);
+    if (m_priv->state == TEXT_PLACED) {
+        render_to_canvas();
+        gtk_widget_destroy(GTK_WIDGET(m_priv->text_view));
+    }
 
     destroy_private_data();
 }

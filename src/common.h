@@ -61,15 +61,16 @@ typedef struct
 	GdkPixbuf		*pb_clipboard;
 } gp_canvas;
 
-/* Tool Type*/
+/* Tool Types */
 typedef struct
 {
-	gboolean	(*button_press)		( GdkEventButton *event );
-	gboolean	(*button_release)	( GdkEventButton *event );
-	gboolean	(*button_motion)	( GdkEventMotion *event );
-	void		(*draw)				( void );
-	void		(*reset)			( void );
-	void		(*destroy)			( gpointer data );
+	gboolean		(*button_press)		( GdkEventButton *event );
+	gboolean		(*button_release)	( GdkEventButton *event );
+	gboolean		(*button_motion)	( GdkEventMotion *event );
+	void			(*draw)				( void );
+	void			(*reset)			( void );
+	void			(*destroy)			( gpointer data );
+	gboolean		no_resize;
 } gp_tool;
 
 #endif /*__COMMON_H__*/
